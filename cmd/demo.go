@@ -17,12 +17,12 @@ package cmd
 
 import (
   "fmt"
-  "strings"
 
   "github.com/leopku/luban/utils"
 
-  "github.com/jimsmart/schema"
-  "github.com/novalagung/gubrak/v2"
+  // "github.com/dave/jennifer/jen"
+  // "github.com/iancoleman/strcase"
+  // "github.com/novalagung/gubrak/v2"
   "github.com/rs/zerolog/log"
   "github.com/spf13/cobra"
   "github.com/spf13/viper"
@@ -48,39 +48,32 @@ to quickly create a Cobra application.`,
     if db == nil {
       log.Fatal().Msg("db init failed")
     }
-    tableSlice, err := schema.TableNames(db)
-    utils.IfErrCallback(err, func() interface{} {
-      log.Fatal().Err(err).Msg("")
-      return nil
-    })
-    log.Trace().Interface("tables", tableSlice).Msg("")
 
-    // excludes, ok := viper.Get("generation.exclude").([]string)
-    // excludes := viper.Get("generation.exclude")
-    excludes := viper.GetStringSlice("generation.exclude")
-    // if !ok {
-    //   log.Error().Msg("exclude param error, ignore while processing")
-    // }
-    log.Debug().Interface("exclude", excludes).Msg("")
-    for _, v := range excludes {
-      log.Debug().Str("exclude", v).Msg("")
+    var err error
+    defer func() {
+      if err != nil {
+        log.Fatal().Err(err).Msg("")
+      }
+    }()
+
+    tables, err := utils.GetAllTableMeta(db)
+    if err != nil {
+      return
     }
-    retInter := gubrak.From(tableSlice).
-      Intersection(excludes).
-      Result()
-    log.Debug().Interface("intersection", retInter).Msg("")
-    /*retExclude := gubrak.From(tableSlice).
-      Exclude(excludes).
-      Result()*/
-    chainableExclude := gubrak.From(tableSlice)
-    for _, v := range excludes {
-      chainableExclude.Exclude(v)
+    t := tables[0]
+    log.Trace().Str("table name", t.Name).Str("model name", t.GetModelName()).Str("go filename", t.GetGoFileName()+".go").Msg("")
+    cols, err := t.GetAllColumnMeta()
+    for _, col := range cols {
+      // log.Trace().Str("column name", col.GetName()).Str("sql type", col.SqlType).Str("go type", col.GoType).Str("json type", col.JsonType).Msg("")
+      log.Debug().Str("column name", col.GetName()).Str("sql type", col.SqlType).Str("go type", col.GoType).Str("json type", col.JsonType).Msg("")
     }
-    retExclude := chainableExclude.Result()
-    log.Debug().Interface("exclude", retExclude).Msg("")
-    for _, table := range retExclude.([]string) {
-      log.Debug().Str("prefix stripped", strings.TrimPrefix(table, viper.GetString("generation.prefix"))).Msg("")
+
+    mapping, err := utils.NewFromJSON("./templates/mapping.json")
+    if err != nil {
+      return
     }
+    log.Trace().Interface("mapping", mapping).Msg("")
+
   },
 }
 
