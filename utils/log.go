@@ -4,9 +4,12 @@ import (
   "github.com/rs/zerolog/log"
 )
 
-func IfErrCallback(err error, cb func() interface{}) {
+type Callback func()
+
+func IfErrCallback(err error, cb func() interface{}) interface{} {
   if err != nil {
     log.Error().Err(err).Msg("")
-    cb()
+    return cb()
   }
+  return nil
 }

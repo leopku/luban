@@ -69,7 +69,7 @@ func init() {
   rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.luban.yaml)")
   rootCmd.PersistentFlags().BoolVar(&v, "v", false, "show detailed output")
   rootCmd.PersistentFlags().BoolVar(&vv, "vv", false, "show more detailed output")
-  rootCmd.PersistentFlags().BoolVar(&vvv, "vvv", false, "show most detailed output")
+  rootCmd.PersistentFlags().BoolVar(&vvv, "vvv", false, "show more and more detailed output")
   rootCmd.PersistentFlags().BoolVar(&vvvv, "vvvv", false, "show most detailed output")
 
   // Cobra also supports local flags, which will only run
@@ -105,11 +105,12 @@ func initConfig() {
 
   viper.SetDefault("database.adapter", "postgres")
   viper.SetDefault("database.host", "localhost")
-  viper.SetDefault("database.port", "5432")
+  viper.SetDefault("database.port", 5432)
   if viper.GetString("database.adapter") == "mysql" {
     viper.SetDefault("database.port", "3306")
   }
   viper.SetDefault("database.encoding", "utf8mb4")
+  viper.SetDefault("generation.model.output", "./models")
 
   // If a config file is found, read it in.
   if err := viper.ReadInConfig(); err == nil {
