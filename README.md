@@ -36,18 +36,18 @@ This project was heavyly inspired by [gen](https://github.com/smallnest/gen). An
 
 Thanks for this projects to build 
 
-- [Cobra](github.com/spf13/cobra)
-- [jennifer](github.com/dave/jennifer)
-- [schema](github.com/jimsmart/schema)
-- [zerolog](github.com/rs/zerolog)
-- [wire](github.com/google/wire)
-- [strcase](github.com/iancoleman/strcase)
-- [xstrings](github.com/huandu/xstrings)
-- [go-pluralize](github.com/gertd/go-pluralize)
-- [go-commons-lang](github.com/agrison/go-commons-lang)
-- [testify](github.com/stretchr/testify)
-- [go-mysql-server](github.com/src-d/go-mysql-server)
-- [jsoniter](github.com/json-iterator/go)
+- [Cobra](https://github.com/spf13/cobra)
+- [jennifer](https://github.com/dave/jennifer)
+- [schema](https://github.com/jimsmart/schema)
+- [zerolog](https://github.com/rs/zerolog)
+- [wire](https://github.com/google/wire)
+- [strcase](https://github.com/iancoleman/strcase)
+- [xstrings](https://github.com/huandu/xstrings)
+- [go-pluralize](https://github.com/gertd/go-pluralize)
+- [go-commons-lang](https://github.com/agrison/go-commons-lang)
+- [testify](https://github.com/stretchr/testify)
+- [go-mysql-server](https://github.com/src-d/go-mysql-server)
+- [jsoniter](https://github.com/json-iterator/go)
 - [vue-element-admin)]([https://github.com/PanJiaChen/vue-element-admin](https://github.com/PanJiaChen/vue-element-admin)) 
 
 # Feedback&Issue
