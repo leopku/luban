@@ -51,7 +51,7 @@ Thanks for this projects to build
 - [testify](https://github.com/stretchr/testify)
 - [go-mysql-server](https://github.com/src-d/go-mysql-server)
 - [jsoniter](https://github.com/json-iterator/go)
-- [vue-element-admin)]([https://github.com/PanJiaChen/vue-element-admin](https://github.com/PanJiaChen/vue-element-admin) 
+- [vue-element-admin]([https://github.com/PanJiaChen/vue-element-admin](https://github.com/PanJiaChen/vue-element-admin) 
 
 # Feedback&Issue
 
