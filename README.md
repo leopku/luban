@@ -1,5 +1,12 @@
 # Luban（鲁班）
 
+An project generator aimed to D.R.Y while creating new project based on DDD. visit https://github.com/leopku/luban for more details.
+
+## Get source code
+
+- [Github](https://github.com/leopku/luban)
+- [Gitee](https://gitee.com/leopku/luban)
+
 ## Features
 
 - [x] Generate model layer(go struct files) from database
@@ -19,7 +26,7 @@
   - [ ] iris
   - [ ] GraphQL
 - [ ] Add go-swagger support
-- [ ]  Admin dashboard
+- [ ] Admin dashboard
 
 # Special thanks
 
@@ -43,4 +50,6 @@ Thanks for this projects to build
 - [jsoniter](github.com/json-iterator/go)
 - [vue-element-admin)]([https://github.com/PanJiaChen/vue-element-admin](https://github.com/PanJiaChen/vue-element-admin)) 
 
+# Feedback&Issue
 
+https://github.com/leopku/luban/issues
