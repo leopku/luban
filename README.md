@@ -16,10 +16,10 @@ An project generator aimed to D.R.Y while creating new project based on DDD. vis
 - [ ] Generate repository layer
   - [ ] Interface
   - [ ] Implement CRUD
-  - [ ] Database library / ORM
-  - [ ] sqlx
-  - [ ] gorm
-  - [ ] xorm
+  - [ ] DAO / ORM
+    - [ ] sqlx
+    - [ ] gorm
+    - [ ] xorm
 - [ ] Generate service layer
 - [ ] Generate deliver layer
   - [ ] RESTful deliver
