@@ -10,6 +10,9 @@ An project generator aimed to D.R.Y while creating new project based on DDD. vis
 ## Features
 
 - [x] Generate model layer(go struct files) from database
+  - [x] MySQL
+  - [ ] PostgreSQL
+  - [ ] Sqlite3
 - [ ] Generate repository layer
   - [ ] Interface
   - [ ] Implement CRUD
@@ -19,12 +22,12 @@ An project generator aimed to D.R.Y while creating new project based on DDD. vis
   - [ ] xorm
 - [ ] Generate service layer
 - [ ] Generate deliver layer
-  - [ ] http deliver
-  - [ ] gin
-  - [ ] gofiber
-  - [ ] echo
-  - [ ] iris
-  - [ ] GraphQL
+  - [ ] RESTful deliver
+    - [ ] gin
+    - [ ] gofiber
+    - [ ] echo
+    - [ ] iris
+  - [ ] GraphQL deliver
 - [ ] Add go-swagger support
 - [ ] Admin dashboard
 
@@ -48,7 +51,7 @@ Thanks for this projects to build
 - [testify](https://github.com/stretchr/testify)
 - [go-mysql-server](https://github.com/src-d/go-mysql-server)
 - [jsoniter](https://github.com/json-iterator/go)
-- [vue-element-admin)]([https://github.com/PanJiaChen/vue-element-admin](https://github.com/PanJiaChen/vue-element-admin)) 
+- [vue-element-admin)]([https://github.com/PanJiaChen/vue-element-admin](https://github.com/PanJiaChen/vue-element-admin) 
 
 # Feedback&Issue
 
