@@ -17,17 +17,20 @@ package cmd
 
 import (
   "fmt"
-  "github.com/spf13/cobra"
   "os"
+
+  "github.com/leopku/luban/utils"
 
   homedir "github.com/mitchellh/go-homedir"
   "github.com/rs/zerolog"
   "github.com/rs/zerolog/log"
+  "github.com/spf13/cobra"
   "github.com/spf13/viper"
 )
 
 var (
   cfgFile string
+  vip     *viper.Viper
   v       bool
   vv      bool
   vvv     bool
@@ -60,7 +63,13 @@ func Execute() {
 
 func init() {
   cobra.OnInitialize(initConfig)
-  cobra.OnInitialize(initLog)
+  // cobra.OnInitialize(initLog)
+  utils.InitConfig(
+    utils.WithV(v),
+    utils.WithVV(vv),
+    utils.WithV(vvv),
+    utils.WithVVVV(vvvv),
+  )
 
   // Here you will define your flags and configuration settings.
   // Cobra supports persistent flags, which, if defined here,
@@ -116,6 +125,7 @@ func initConfig() {
   if err := viper.ReadInConfig(); err == nil {
     fmt.Println("Using config file:", viper.ConfigFileUsed())
   }
+  vip = viper.GetViper()
 }
 
 func initLog() {

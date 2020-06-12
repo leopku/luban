@@ -3,15 +3,26 @@ package utils
 import (
   "errors"
   "fmt"
+  "io"
   "os"
   "path"
 
   "github.com/spf13/viper"
   // strUtil "github.com/agrison/go-commons-lang/stringUtils"
+  "github.com/rs/zerolog/log"
 )
 
-func GetModelPath() string {
-  ret := viper.GetString("generation.model.output")
+func NewConfigFromReader(in io.Reader, cType string) *viper.Viper {
+  cfg := viper.New()
+  cfg.SetConfigType(cType)
+  cfg.ReadConfig(in)
+  log.Trace().Interface("cfg", cfg).Msg("")
+  return cfg
+}
+
+func GetModelPath(outpath string) string {
+  // ret := vip.GetString("generation.model.output")
+  ret := outpath
   base := path.Base(ret)
   if base == "/" || base == "." {
     ret = "./models"
@@ -19,8 +30,8 @@ func GetModelPath() string {
   return ret
 }
 
-func GetModelPackageName() string {
-  return path.Base(GetModelPath())
+func GetModelPackageName(outpath string) string {
+  return path.Base(GetModelPath(outpath))
 }
 
 func CreateDirectory(dirName string) error {

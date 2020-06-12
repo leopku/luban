@@ -20,7 +20,7 @@ func init() {
 
 func runGenModel(cmd *cobra.Command, args []string) {
   count := 0
-  db := utils.BuildDB()
+  db := utils.NewDB(vip)
   if db == nil {
     log.Fatal().Msg("db init failed")
   }
@@ -37,7 +37,7 @@ func runGenModel(cmd *cobra.Command, args []string) {
     log.Fatal().Err(err).Msg("")
   }
 
-  tables, err := utils.GetAllTableMeta(db)
+  tables, err := utils.GetAllTableMeta(db, vip)
   if err != nil {
     return
   }

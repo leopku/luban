@@ -22,6 +22,7 @@ require (
 	github.com/selvatico/go-mocket v1.0.7
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/viper v1.7.0
+	github.com/src-d/go-mysql-server v0.6.0
 	github.com/stretchr/testify v1.4.0
 	github.com/ulule/deepcopier v0.0.0-20200430083143-45decc6639b6
 	gopkg.in/src-d/go-parse-utils.v1 v1.1.2

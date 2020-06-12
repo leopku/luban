@@ -11,15 +11,17 @@ import (
   "github.com/huandu/xstrings"
   "github.com/jimsmart/schema"
   "github.com/rs/zerolog/log"
+  // "github.com/spf13/viper"
 )
 
 var plural = pluralize.NewClient()
 
 type TableMeta struct {
-  db      *sql.DB
-  Name    string
-  Prefix  string
-  Columns []*ColumnMeta
+  db         *sql.DB
+  Name       string
+  Prefix     string
+  OutputPath string
+  Columns    []*ColumnMeta
 }
 
 func (this *TableMeta) BuildName(name string) *TableMeta {
@@ -33,6 +35,7 @@ func (this *TableMeta) BuildPrefix(prefix string) *TableMeta {
 }
 
 func (this *TableMeta) GetNameWithoutPrefix() string {
+  log.Trace().Str("prefix", this.Prefix).Msg("")
   return strings.TrimPrefix(this.Name, this.Prefix)
 }
 
@@ -72,7 +75,7 @@ func (this *TableMeta) GetAllColumnMeta() ([]*ColumnMeta, error) {
 }
 
 func (this *TableMeta) BuildModel() *jen.File {
-  f := jen.NewFile(GetModelPackageName())
+  f := jen.NewFile(GetModelPackageName(this.OutputPath))
   // this.Columns := this.GetAllColumnMeta()
   columns, err := this.GetAllColumnMeta()
   if err != nil {
