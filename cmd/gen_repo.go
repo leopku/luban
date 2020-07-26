@@ -10,18 +10,18 @@ import (
   "github.com/spf13/viper"
 )
 
-var genModelCmd = &cobra.Command{
-  Use:   "model",
-  Short: "generate models",
-  Long:  `generate models`,
-  Run:   runGenModel,
+var genRepoCmd = &cobra.Command{
+  Use:   "repo",
+  Short: "generate repositories",
+  Long:  `generate repositories`,
+  Run:   runGenRepo,
 }
 
 func init() {
-  genCmd.AddCommand(genModelCmd)
+  genCmd.AddCommand(genRepoCmd)
 }
 
-func runGenModel(cmd *cobra.Command, args []string) {
+func runGenRepo(cmd *cobra.Command, args []string) {
   count := 0
   db := utils.NewDB(vip)
   if db == nil {
@@ -47,13 +47,14 @@ func runGenModel(cmd *cobra.Command, args []string) {
     //usecasePath := fmt.Sprintf("%s/usecase/%s", output, strcase.ToKebab(table.GetNameWithoutPrefix()))
     modulePath := table.GetModulePath(output)
     if err := utils.CreateDirectory(modulePath); err != nil {
-      log.Fatal().Err(err).Msg("")
+      // log.Debug().Err(err).Msg("")
+      log.Debug().Msg("module path alread exists, skipping...")
     }
 
     // modelFile := fmt.Sprintf("%s/%s_model.go", usecasePath, table.GetGoFileName())
-    err := table.SaveModel(modulePath)
+    err := table.SaveRepo(modulePath)
     if err != nil {
-      log.Error().Err(err).Str("table model", table.Name).Msg("generating failed")
+      log.Error().Err(err).Str("table repo", table.Name).Msg("generating failed")
     } else {
       count++
     }

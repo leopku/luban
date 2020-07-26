@@ -26,6 +26,7 @@ var defaultConfigOption = ConfigOption{
 }
 
 func WithV(v bool) ConfigOptionFunc {
+	log.Log().Interface("v", v).Msg("")
 	return func(opts *ConfigOption) {
 		opts.V = v
 	}
@@ -73,10 +74,10 @@ func InitConfig(opts ...ConfigOptionFunc) {
 	log.Logger = log.With().Caller().Logger().Output(zerolog.ConsoleWriter{Out: os.Stderr})
 }
 
-func IfErrCallback(err error, cb func() interface{}) interface{} {
-	if err != nil {
-		log.Error().Err(err).Msg("")
-		return cb()
-	}
-	return nil
-}
+// func IfErrCallback(err error, cb Callback) Callback {
+// 	if err != nil {
+// 		log.Error().Err(err).Msg("")
+// 		return cb()
+// 	}
+// 	return nil
+// }

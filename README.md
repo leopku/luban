@@ -33,7 +33,7 @@ An project generator aimed to D.R.Y while creating new project based on DDD. vis
 
 # Special thanks
 
-This project was heavyly inspired by [gen](https://github.com/smallnest/gen). And `templates/mapping.json` was directly copy from [gen](https://github.com/smallnest/gen) project. Thanks you, @smallnest.
+This project was heavyly inspired by [gen](https://github.com/smallnest/gen). And `templates/mapping.json` was directly copied from [gen](https://github.com/smallnest/gen) project. Thanks you, [@smallnest](https://github.com/smallnest).
 
 # Credit
 

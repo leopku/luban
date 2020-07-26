@@ -1,18 +1,19 @@
 package utils
 
 import (
-  "bytes"
-  "database/sql"
+  // "bytes"
+  // "database/sql"
+  "fmt"
 
   // "io/ioutil"
   "testing"
 
   // "github.com/jimsmart/schema"
-  "github.com/spf13/viper"
+  // "github.com/spf13/viper"
   "github.com/stretchr/testify/assert"
 )
 
-var (
+/*var (
   db  *sql.DB
   vip *viper.Viper
 )
@@ -50,68 +51,38 @@ output = "generated"
   t.Log("vip", vip)
   // db = NewDB(vip)
   t.Log("db", db)
-}
+}*/
 
-func TestTableCount(t *testing.T) {
+func TestGetModulePath(t *testing.T) {
   SetUp(t)
-  want := 1
-  tables, err := GetAllTableMeta(db, vip)
-
-  if err != nil {
-    t.Fatalf("an error '%s' while GetAllTableMeta", err)
-  }
-
-  got := len(tables)
-  assert.Equal(t, want, got)
-}
-
-func TestTableName(t *testing.T) {
-  SetUp(t)
-  want := "prefix_mytable"
+  base := vip.GetString("generation.output")
   tables, err := GetAllTableMeta(db, vip)
   if err != nil {
     t.Fatalf("an error '%s' while GetAllTableMeta", err)
   }
   t0 := tables[0]
-  got := t0.Name
+  want := fmt.Sprintf("%s/module/%s", base, t0.GetModuleName())
+  got := t0.GetModulePath(base)
+
   assert.Equal(t, want, got)
 }
 
-func TestTableGetNameWithoutPrefix(t *testing.T) {
+func TestGetFileName(t *testing.T) {
   SetUp(t)
-  want := "mytable"
+  base := vip.GetString("generation.output")
   tables, err := GetAllTableMeta(db, vip)
   if err != nil {
     t.Fatalf("an error '%s' while GetAllTableMeta", err)
   }
   t0 := tables[0]
-  got := t0.GetNameWithoutPrefix()
+  wantModelFile := fmt.Sprintf("%s/%s_model.go", t0.GetModulePath(base), t0.GetGoFileName())
+  gotModelFile := t0.GetFileName(t0.GetModulePath(base), "model")
 
-  assert.Equal(t, want, got)
-}
+  assert.Equal(t, wantModelFile, gotModelFile)
 
-func TestTableGetModelName(t *testing.T) {
-  SetUp(t)
-  want := "Mytable"
-  tables, err := GetAllTableMeta(db, vip)
-  if err != nil {
-    t.Fatalf("an error '%s' while GetAllTableMeta", err)
-  }
-  t0 := tables[0]
-  got := t0.GetModelName()
+  wantRepoFile := fmt.Sprintf("%s/%s_repo.go", t0.GetModulePath(base), t0.GetGoFileName())
+  gotRepoFile := t0.GetFileName(t0.GetModulePath(base), "repo")
 
-  assert.Equal(t, want, got)
-}
+  assert.Equal(t, wantRepoFile, gotRepoFile)
 
-func TestTableGetGoFileName(t *testing.T) {
-  SetUp(t)
-  want := "mytable"
-  tables, err := GetAllTableMeta(db, vip)
-  if err != nil {
-    t.Fatalf("an error '%s' while GetAllTableMeta", err)
-  }
-  t0 := tables[0]
-  got := t0.GetGoFileName()
-
-  assert.Equal(t, want, got)
 }

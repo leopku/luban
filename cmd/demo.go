@@ -16,16 +16,19 @@ limitations under the License.
 package cmd
 
 import (
+  // "errors"
   "fmt"
-
-  "github.com/leopku/luban/utils"
-
+  // "path"
+  // "github.com/leopku/luban/utils"
   // "github.com/dave/jennifer/jen"
+  // // "github.com/iancoleman/strcase"
+  // // "github.com/novalagung/gubrak/v2"
+  // strUtil "github.com/agrison/go-commons-lang/stringUtils"
   // "github.com/iancoleman/strcase"
-  // "github.com/novalagung/gubrak/v2"
-  "github.com/rs/zerolog/log"
+  // "github.com/rs/zerolog/log"
   "github.com/spf13/cobra"
-  "github.com/spf13/viper"
+  // "github.com/spf13/viper"
+  // "gopkg.in/src-d/go-parse-utils.v1"
 )
 
 // demoCmd represents the demo command
@@ -40,39 +43,6 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
   Run: func(cmd *cobra.Command, args []string) {
     fmt.Println("demo called")
-    fmt.Println("ConfigFileUsed: ", viper.ConfigFileUsed())
-    fmt.Println(viper.GetString("database.aa"))
-    log.Trace().Interface("database", viper.Get("database")).Msg("")
-    // fmt.Println(zerolog.GetLevel().String())
-    db := utils.BuildDB()
-    if db == nil {
-      log.Fatal().Msg("db init failed")
-    }
-
-    var err error
-    defer func() {
-      if err != nil {
-        log.Fatal().Err(err).Msg("")
-      }
-    }()
-
-    tables, err := utils.GetAllTableMeta(db)
-    if err != nil {
-      return
-    }
-    t := tables[0]
-    log.Trace().Str("table name", t.Name).Str("model name", t.GetModelName()).Str("go filename", t.GetGoFileName()+".go").Msg("")
-    cols, err := t.GetAllColumnMeta()
-    for _, col := range cols {
-      // log.Trace().Str("column name", col.GetName()).Str("sql type", col.SqlType).Str("go type", col.GoType).Str("json type", col.JsonType).Msg("")
-      log.Debug().Str("column name", col.GetName()).Str("sql type", col.SqlType).Str("go type", col.GoType).Str("json type", col.JsonType).Msg("")
-    }
-
-    mapping, err := utils.NewFromJSON("./templates/mapping.json")
-    if err != nil {
-      return
-    }
-    log.Trace().Interface("mapping", mapping).Msg("")
 
   },
 }
