@@ -10,3 +10,6 @@ dep:
 test:
   # go run main.go mysql
   go test $(go list ./... | grep -v generated)
+
+gen:
+  go run main.go gen model && go run main.go gen repo

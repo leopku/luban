@@ -3,6 +3,7 @@ module github.com/leopku/luban
 go 1.13
 
 require (
+	github.com/Masterminds/squirrel v1.4.0
 	github.com/agrison/go-commons-lang v0.0.0-20200208220349-58e9fcb95174
 	github.com/dave/jennifer v1.4.0
 	github.com/francoispqt/gojay v1.2.13
@@ -14,6 +15,7 @@ require (
 	github.com/huandu/xstrings v1.3.2
 	github.com/iancoleman/strcase v0.0.0-20191112232945-16388991a334
 	github.com/jimsmart/schema v0.0.4
+	github.com/jmoiron/sqlx v1.2.0
 	github.com/json-iterator/go v1.1.6
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/rs/zerolog v1.19.0

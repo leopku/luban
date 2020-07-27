@@ -90,7 +90,8 @@ func (this *TableMeta) GetAllColumnMeta() ([]*ColumnMeta, error) {
 }
 
 func (this *TableMeta) BuildModel() *jen.File {
-  f := jen.NewFile(GetModelPackageName(this.OutputPath))
+  // f := jen.NewFile(GetModelPackageName(this.OutputPath) + "/" + this.GetNameWithoutPrefix())
+  f := jen.NewFile(this.GetNameWithoutPrefix())
   // this.Columns := this.GetAllColumnMeta()
   columns, err := this.GetAllColumnMeta()
   if err != nil {
@@ -116,61 +117,113 @@ func (this *TableMeta) SaveModel(modulePath string) error {
 }
 
 func (this *TableMeta) BuildRepo() *jen.File {
-  f := jen.NewFile(GetModelPackageName(this.OutputPath))
+  // f := jen.NewFile(GetModelPackageName(this.OutputPath) + "/" + this.GetNameWithoutPrefix())
+  f := jen.NewFile(this.GetNameWithoutPrefix())
+  f.ImportAlias("github.com/Masterminds/squirrel", "sql")
 
+  // type Option
   f.Line().Comment("option")
   f.Type().Id("Option").Struct(
+    jen.Id("Where").String(),
+    jen.Id("Deleted").Bool(),
     jen.Id("Limit").Int(),
     jen.Id("Offset").Int(),
+    jen.Id("OrderBy").String(),
     jen.Id("Order").String(),
   )
+  // type OptionFunc
   f.Type().Id("OptionFunc").Func().
     Params(
       jen.Id("opts").Op("*").Id("Option"),
     )
+
+  // var defaultOption
   f.Var().Id("defaultOption").Op("=").Id("Option").Values(jen.Dict{
-    jen.Id("Limit"):  jen.Lit(10),
-    jen.Id("Offset"): jen.Lit(0),
-    jen.Id("Order"):  jen.Lit("asc"),
+    jen.Id("Where"):   jen.Lit("1=1"),
+    jen.Id("Deleted"): jen.Lit(false),
+    jen.Id("Limit"):   jen.Lit(10),
+    jen.Id("Offset"):  jen.Lit(0),
+    jen.Id("OrderBy"): jen.Lit(""),
+    jen.Id("Order"):   jen.Lit("asc"),
   })
+
+  // func WithLimit
   f.Func().Id("WithLimit").
     Params(jen.Id("limit").Int()).
     Params(jen.Id("OptionFunc")).
     Block(
       jen.Return(
         jen.Func().Params(jen.Id("opts").Op("*").Id("Option")).Block(
-          // jen.Qual("opts", "Limit").Op("=").Id("limit"),
           jen.Id("opts").Dot("Limit").Op("=").Id("limit"),
         ),
       ),
     )
+
+  // func WithOffset
   f.Func().Id("WithOffset").
     Params(jen.Id("offset").Int()).
     Params(jen.Id("OptionFunc")).
     Block(
       jen.Return(
         jen.Func().Params(jen.Id("opts").Op("*").Id("Option")).Block(
-          // jen.Qual("opts", "Offset").Op("=").Id("offset"),
           jen.Id("opts").Dot("Offset").Op("=").Id("offset"),
         ),
       ),
     )
-  f.Func().Id("WithOrder").
-    Params(jen.Id("order").Int()).
+
+  // func WithOrderBy
+  f.Func().Id("WithOrderBy").
+    Params(jen.Id("orderBy").String()).
     Params(jen.Id("OptionFunc")).
     Block(
       jen.Return(
         jen.Func().Params(jen.Id("opts").Op("*").Id("Option")).Block(
-          // jen.Qual("opts", "Order").Op("=").Id("order"),
+          jen.Id("opts").Dot("OrderBy").Op("=").Id("orderBy"),
+        ),
+      ),
+    )
+
+  // func WithOrder
+  f.Func().Id("WithOrder").
+    Params(jen.Id("order").String()).
+    Params(jen.Id("OptionFunc")).
+    Block(
+      jen.Return(
+        jen.Func().Params(jen.Id("opts").Op("*").Id("Option")).Block(
           jen.Id("opts").Dot("Order").Op("=").Id("order"),
         ),
       ),
     )
 
+  // func WithWhere
+  f.Func().Id("WithWhere").
+    Params(
+      jen.List(
+        jen.Id("format").String(),
+        jen.Id("a").Op("...").Interface(),
+      ),
+    ).
+    Params(jen.Id("OptionFunc")).
+    Block(
+      jen.Return(
+        jen.Func().Params(jen.Id("opts").Op("*").Id("Option")).Block(
+          jen.Id("opts").Dot("Where").Op("=").Qual("fmt", "Sprintf").Params(
+            jen.List(
+              jen.Lit("%s AND 1=1"),
+              jen.Qual("fmt", "Sprintf").Params(jen.List(jen.Id("format"), jen.Id("a").Op("..."))),
+            ),
+          ),
+        ),
+      ),
+    )
+
+  // interface IxxxRepostiry
   f.Line().Comment(fmt.Sprintf("%s respostiory interface", this.GetModelName()))
   f.Type().Id(fmt.Sprintf("I%sRepository", this.GetModelName())).Interface(
     jen.Id("GetAll").
-      Params().
+      Params(
+        jen.Id("opts").Op("...").Id("OptionFunc"),
+      ).
       Params(
         jen.Index().Op("*").Id(this.GetModelName()),
         jen.Error(),
@@ -195,14 +248,28 @@ func (this *TableMeta) BuildRepo() *jen.File {
       Params(jen.Error()),
   )
 
+  repositoryName := fmt.Sprintf("%sRepository", this.GetModelName())
+  // repository xxxRepository
   f.Line().Comment(fmt.Sprintf("%s repository", this.GetModelName()))
-  f.Type().Id(fmt.Sprintf("%sRepository", this.GetModelName())).Struct(
-    jen.Id("db").Op("*").Qual("database/sql", "DB"),
+  f.Type().Id(repositoryName).Struct(
+    jen.Id("db").Op("*").Qual("github.com/jmoiron/sqlx", "DB"),
   )
 
-  f.Line().Comment(fmt.Sprintf("%s repository", this.GetModelName()))
+  // func NewxxxRepository
+  f.Line().Comment(fmt.Sprintf("New%sRepository", this.GetModelName()))
+  f.Func().Id(fmt.Sprintf("New%s", repositoryName)).
+    Params(jen.Id("db").Op("*").Qual("github.com/jmoiron/sqlx", "DB")).
+    Params(jen.Op("*").Id(repositoryName)).
+    Block(jen.Return(
+      jen.Op("&").
+        Id(repositoryName).
+        Values(jen.Dict{jen.Id("db"): jen.Id("db")}),
+    ))
+
+  // func GetAll
+  f.Line().Comment(fmt.Sprintf("get all %s", this.GetModelName()))
   f.Func().
-    Params(jen.Id("this").Op("*").Id(fmt.Sprintf("%sRepository", this.GetModelName()))).
+    Params(jen.Id("this").Op("*").Id(repositoryName)).
     Id("GetAll").
     Params(
       jen.Id("opts").Op("...").Id("OptionFunc"),
@@ -219,10 +286,82 @@ func (this *TableMeta) BuildRepo() *jen.File {
           ),
         ),
       ),
+      jen.Id(fmt.Sprintf("%sSlice", this.GetNameWithoutPrefix())).Op(":=").Index().Op("*").Id(this.GetModelName()).Block(),
       jen.Id("sql").Op(":=").Lit(fmt.Sprintf("SELECT * FROM `%s`", this.Name)),
+      jen.Id("sql").Op("=").Qual("fmt", "Sprintf").
+        Params(jen.List(
+          jen.Lit("%s WHERE %s"),
+          jen.Id("sql"),
+          jen.Id("options").Dot("Where"),
+        )),
+      jen.Id("sql").Op("=").Qual("fmt", "Sprintf").
+        Params(jen.List(
+          jen.Lit("%s LIMIT %d OFFSET %d"),
+          jen.Id("sql"),
+          jen.Id("options").Dot("Limit"),
+          jen.Id("options").Dot("Offset"),
+        )),
+      jen.If(
+        jen.Op("!").Qual("github.com/agrison/go-commons-lang/stringUtils", "IsBlank").
+          Params(jen.Id("options").Dot("OrderBy")).
+          Block(
+            jen.Id("sql").Op("=").Qual("fmt", "Sprintf").
+              Params(jen.List(
+                jen.Lit("%s ORDER BY %s %s"),
+                jen.Id("sql"),
+                jen.Id("options").Dot("OrderBy"),
+                jen.Id("options").Dot("Order"),
+              )),
+          ),
+      ),
+      jen.Err().Op(":=").Id("this").Dot("db").Dot("Select").Call(
+        jen.Op("&").Id(fmt.Sprintf("%sSlice", this.GetNameWithoutPrefix())),
+        jen.Id("sql"),
+      ),
+      jen.If(
+        jen.Err().Op("!=").Id("nil").Block(
+          jen.Return(jen.Nil(), jen.Err()),
+        ),
+      ),
       jen.Return(
-        jen.Nil(),
+        jen.Id(fmt.Sprintf("%sSlice", this.GetNameWithoutPrefix())),
         jen.Nil()))
+
+  // func GetById
+  f.Line().Comment(fmt.Sprintf("get one %s by id", this.GetModelName()))
+  f.Func().
+    Params(jen.Id("this").Op("*").Id(repositoryName)).
+    Id("GetById").
+    Params(jen.Id("id").Int()).
+    Params(jen.List(
+      jen.Op("*").Id(this.GetModelName()),
+      jen.Error(),
+    )).
+    Block(
+      jen.Id(this.GetNameWithoutPrefix()).Op(":=").Op("&").Id(this.GetModelName()).Block(),
+      // TODO: add deleted_at / deleted in where clause
+      jen.Id("sb").Op(":=").
+        Qual("github.com/Masterminds/squirrel", "Select").Call(jen.Lit("*")).
+        Dot("From").Call(jen.Lit(fmt.Sprintf("%s", this.Name))).
+        Dot("Where").Call(jen.Lit("id = ?"), jen.Id("id")),
+      jen.List(jen.Id("query"), jen.Id("args"), jen.Err()).Op(":=").Id("sb").Dot("ToSql").Call(),
+      jen.If(
+        jen.Err().Op("!=").Nil().Block(
+          // jen.Qual("fmt", "Println").Params(jen.Id("query")),
+          jen.Return(jen.Nil(), jen.Err()),
+        ),
+      ),
+      jen.If(
+        jen.Err().Op(":=").Id("this").Dot("db").Dot("Get").Call(
+          jen.Id(this.GetNameWithoutPrefix()),
+          jen.Id("query"),
+          jen.Id("args").Op("..."),
+        ),
+        jen.Err().Op("!=").Nil(),
+      ).
+        Block(jen.Return(jen.Nil(), jen.Err())),
+      jen.Return(jen.Id(this.GetNameWithoutPrefix()), jen.Nil()),
+    )
 
   return f
 }

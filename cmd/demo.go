@@ -19,16 +19,19 @@ import (
   // "errors"
   "fmt"
   // "path"
-  // "github.com/leopku/luban/utils"
+  "github.com/leopku/luban/generated/module/ad"
+  "github.com/leopku/luban/generated/module/coupon"
+  "github.com/leopku/luban/utils"
   // "github.com/dave/jennifer/jen"
   // // "github.com/iancoleman/strcase"
   // // "github.com/novalagung/gubrak/v2"
   // strUtil "github.com/agrison/go-commons-lang/stringUtils"
   // "github.com/iancoleman/strcase"
-  // "github.com/rs/zerolog/log"
+  "github.com/rs/zerolog/log"
   "github.com/spf13/cobra"
   // "github.com/spf13/viper"
   // "gopkg.in/src-d/go-parse-utils.v1"
+  "github.com/jmoiron/sqlx"
 )
 
 // demoCmd represents the demo command
@@ -43,7 +46,37 @@ This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
   Run: func(cmd *cobra.Command, args []string) {
     fmt.Println("demo called")
+    db := utils.NewDB(vip)
+    if db == nil {
+      log.Fatal().Msg("db init failed")
+    }
 
+    var err error
+    defer func() {
+      if err != nil {
+        log.Fatal().Err(err).Msg("")
+      }
+    }()
+
+    dbx := sqlx.NewDb(db, "mysql")
+    // adRepo := &ad.AdRepository{db: dbx}
+    adRepo := ad.NewAdRepository(dbx)
+    adSlice, err := adRepo.GetAll()
+    if err != nil {
+      log.Fatal().Err(err).Msg("")
+    }
+    log.Log().Interface("all ad", adSlice).Msg("")
+
+    ad, err := adRepo.GetById(1)
+    log.Log().Interface("ad by id", ad).Msg("")
+
+    couponRepo := coupon.NewCouponRepository(dbx)
+    couponSlice, err := couponRepo.GetAll(coupon.WithWhere("`limit` = %d", 1))
+    // couponSlice, err := couponRepo.GetAll(coupon.WithWhere("`limit` = %d AND type = %d", 1, 1))
+    if err != nil {
+      log.Fatal().Err(err).Msg("")
+    }
+    log.Log().Interface("all coupon", couponSlice).Msg("")
   },
 }
 

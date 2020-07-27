@@ -174,6 +174,6 @@ func (this *ColumnMeta) GenerateGo(group *jen.Group) {
     s.Interface()
   }
 
-  s.Tag(map[string]string{"json": jsonTag})
+  s.Tag(map[string]string{"json": jsonTag, "db": this.GetName()})
 
 }
