@@ -120,16 +120,16 @@ func (this *TableMeta) BuildRepo() *jen.File {
   // f := jen.NewFile(GetModelPackageName(this.OutputPath) + "/" + this.GetNameWithoutPrefix())
   f := jen.NewFile(this.GetNameWithoutPrefix())
   f.ImportAlias("github.com/Masterminds/squirrel", "sql")
+  f.ImportAlias("github.com/agrison/go-commons-lang/stringUtils", "stringUtils")
 
   // type Option
   f.Line().Comment("option")
   f.Type().Id("Option").Struct(
     jen.Id("Where").String(),
-    jen.Id("Deleted").Bool(),
-    jen.Id("Limit").Int(),
-    jen.Id("Offset").Int(),
+    jen.Id("SoftDelete").Bool(),
+    jen.Id("Limit").Uint64(),
+    jen.Id("Offset").Uint64(),
     jen.Id("OrderBy").String(),
-    jen.Id("Order").String(),
   )
   // type OptionFunc
   f.Type().Id("OptionFunc").Func().
@@ -139,17 +139,16 @@ func (this *TableMeta) BuildRepo() *jen.File {
 
   // var defaultOption
   f.Var().Id("defaultOption").Op("=").Id("Option").Values(jen.Dict{
-    jen.Id("Where"):   jen.Lit("1=1"),
-    jen.Id("Deleted"): jen.Lit(false),
-    jen.Id("Limit"):   jen.Lit(10),
-    jen.Id("Offset"):  jen.Lit(0),
-    jen.Id("OrderBy"): jen.Lit(""),
-    jen.Id("Order"):   jen.Lit("asc"),
+    jen.Id("Where"):      jen.Lit("1=1"),
+    jen.Id("SoftDelete"): jen.Lit(false),
+    jen.Id("Limit"):      jen.Lit(10),
+    jen.Id("Offset"):     jen.Lit(0),
+    jen.Id("OrderBy"):    jen.Lit(""),
   })
 
   // func WithLimit
   f.Func().Id("WithLimit").
-    Params(jen.Id("limit").Int()).
+    Params(jen.Id("limit").Uint64()).
     Params(jen.Id("OptionFunc")).
     Block(
       jen.Return(
@@ -161,7 +160,7 @@ func (this *TableMeta) BuildRepo() *jen.File {
 
   // func WithOffset
   f.Func().Id("WithOffset").
-    Params(jen.Id("offset").Int()).
+    Params(jen.Id("offset").Uint64()).
     Params(jen.Id("OptionFunc")).
     Block(
       jen.Return(
@@ -184,7 +183,7 @@ func (this *TableMeta) BuildRepo() *jen.File {
     )
 
   // func WithOrder
-  f.Func().Id("WithOrder").
+  /*f.Func().Id("WithOrder").
     Params(jen.Id("order").String()).
     Params(jen.Id("OptionFunc")).
     Block(
@@ -193,7 +192,7 @@ func (this *TableMeta) BuildRepo() *jen.File {
           jen.Id("opts").Dot("Order").Op("=").Id("order"),
         ),
       ),
-    )
+    )*/
 
   // func WithWhere
   f.Func().Id("WithWhere").
@@ -287,42 +286,69 @@ func (this *TableMeta) BuildRepo() *jen.File {
         ),
       ),
       jen.Id(fmt.Sprintf("%sSlice", this.GetNameWithoutPrefix())).Op(":=").Index().Op("*").Id(this.GetModelName()).Block(),
-      jen.Id("sql").Op(":=").Lit(fmt.Sprintf("SELECT * FROM `%s`", this.Name)),
-      jen.Id("sql").Op("=").Qual("fmt", "Sprintf").
-        Params(jen.List(
-          jen.Lit("%s WHERE %s"),
+      /*jen.Id("sql").Op(":=").Lit(fmt.Sprintf("SELECT * FROM `%s`", this.Name)),
+        jen.Id("sql").Op("=").Qual("fmt", "Sprintf").
+          Params(jen.List(
+            jen.Lit("%s WHERE %s"),
+            jen.Id("sql"),
+            jen.Id("options").Dot("Where"),
+          )),
+        jen.Id("sql").Op("=").Qual("fmt", "Sprintf").
+          Params(jen.List(
+            jen.Lit("%s LIMIT %d OFFSET %d"),
+            jen.Id("sql"),
+            jen.Id("options").Dot("Limit"),
+            jen.Id("options").Dot("Offset"),
+          )),
+        jen.If(
+          jen.Op("!").Qual("github.com/agrison/go-commons-lang/stringUtils", "IsBlank").
+            Params(jen.Id("options").Dot("OrderBy")).
+            Block(
+              jen.Id("sql").Op("=").Qual("fmt", "Sprintf").
+                Params(jen.List(
+                  jen.Lit("%s ORDER BY %s %s"),
+                  jen.Id("sql"),
+                  jen.Id("options").Dot("OrderBy"),
+                  jen.Id("options").Dot("Order"),
+                )),
+            ),
+        ),
+        jen.Err().Op(":=").Id("this").Dot("db").Dot("Select").Call(
+          jen.Op("&").Id(fmt.Sprintf("%sSlice", this.GetNameWithoutPrefix())),
           jen.Id("sql"),
-          jen.Id("options").Dot("Where"),
-        )),
-      jen.Id("sql").Op("=").Qual("fmt", "Sprintf").
-        Params(jen.List(
-          jen.Lit("%s LIMIT %d OFFSET %d"),
-          jen.Id("sql"),
-          jen.Id("options").Dot("Limit"),
-          jen.Id("options").Dot("Offset"),
-        )),
+        ),
+        jen.If(
+          jen.Err().Op("!=").Id("nil").Block(
+            jen.Return(jen.Nil(), jen.Err()),
+          ),
+        ),*/
+      jen.Id("sb").Op(":=").
+        Qual("github.com/Masterminds/squirrel", "Select").Call(jen.Lit("*")).
+        Dot("From").Call(jen.Lit(this.Name)).
+        Dot("Where").Call(jen.Id("options").Dot("Where")),
       jen.If(
         jen.Op("!").Qual("github.com/agrison/go-commons-lang/stringUtils", "IsBlank").
           Params(jen.Id("options").Dot("OrderBy")).
-          Block(
-            jen.Id("sql").Op("=").Qual("fmt", "Sprintf").
-              Params(jen.List(
-                jen.Lit("%s ORDER BY %s %s"),
-                jen.Id("sql"),
-                jen.Id("options").Dot("OrderBy"),
-                jen.Id("options").Dot("Order"),
-              )),
-          ),
+          Block(jen.Id("sb").Op("=").Id("sb").Dot("OrderBy").Call(jen.Id("options").Dot("OrderBy"))),
       ),
-      jen.Err().Op(":=").Id("this").Dot("db").Dot("Select").Call(
-        jen.Op("&").Id(fmt.Sprintf("%sSlice", this.GetNameWithoutPrefix())),
-        jen.Id("sql"),
-      ),
+      jen.Id("sb").Op("=").Id("sb").
+        Dot("Limit").Call(jen.Id("options").Dot("Limit")).
+        Dot("Offset").Call(jen.Id("options").Dot("Offset")),
+      jen.List(jen.Id("query"), jen.Id("args"), jen.Err()).Op(":=").Id("sb").Dot("ToSql").Call(),
       jen.If(
-        jen.Err().Op("!=").Id("nil").Block(
+        jen.Err().Op("!=").Nil().Block(
+          // jen.Qual("fmt", "Println").Params(jen.Id("query")),
           jen.Return(jen.Nil(), jen.Err()),
         ),
       ),
+      jen.If(
+        jen.Err().Op(":=").Id("this").Dot("db").Dot("Select").Call(
+          jen.Op("&").Id(fmt.Sprintf("%sSlice", this.GetNameWithoutPrefix())),
+          jen.Id("query"),
+          jen.Id("args").Op("..."),
+        ),
+        jen.Err().Op("!=").Nil(),
+      ).Block(jen.Return(jen.Nil(), jen.Err())),
       jen.Return(
         jen.Id(fmt.Sprintf("%sSlice", this.GetNameWithoutPrefix())),
         jen.Nil()))
@@ -342,7 +368,7 @@ func (this *TableMeta) BuildRepo() *jen.File {
       // TODO: add deleted_at / deleted in where clause
       jen.Id("sb").Op(":=").
         Qual("github.com/Masterminds/squirrel", "Select").Call(jen.Lit("*")).
-        Dot("From").Call(jen.Lit(fmt.Sprintf("%s", this.Name))).
+        Dot("From").Call(jen.Lit(this.Name)).
         Dot("Where").Call(jen.Lit("id = ?"), jen.Id("id")),
       jen.List(jen.Id("query"), jen.Id("args"), jen.Err()).Op(":=").Id("sb").Dot("ToSql").Call(),
       jen.If(
@@ -358,8 +384,7 @@ func (this *TableMeta) BuildRepo() *jen.File {
           jen.Id("args").Op("..."),
         ),
         jen.Err().Op("!=").Nil(),
-      ).
-        Block(jen.Return(jen.Nil(), jen.Err())),
+      ).Block(jen.Return(jen.Nil(), jen.Err())),
       jen.Return(jen.Id(this.GetNameWithoutPrefix()), jen.Nil()),
     )
 

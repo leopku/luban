@@ -11,15 +11,15 @@ An project generator aimed to D.R.Y while creating new project based on DDD. vis
 
 - [x] Generate model layer(go struct files) from database
   - [x] MySQL
-  - [ ] PostgreSQL
-  - [ ] Sqlite3
+  - [x] PostgreSQL
+  - [x] Sqlite3
 - [ ] Generate repository layer
   - [ ] Interface
   - [ ] Implement CRUD
   - [ ] DAO / ORM
-    - [ ] sqlx
-    - [ ] gorm
-    - [ ] xorm
+    - [x] sqlx
+    - [ ] ~~gorm~~
+    - [ ] ~~xorm~~
 - [ ] Generate service layer
 - [ ] Generate deliver layer
   - [ ] RESTful deliver
@@ -52,6 +52,8 @@ Thanks for this projects to build
 - [go-mysql-server](https://github.com/src-d/go-mysql-server)
 - [jsoniter](https://github.com/json-iterator/go)
 - [vue-element-admin](https://github.com/PanJiaChen/vue-element-admin)
+- [squirrel](github.com/Masterminds/squirrel)
+- [sqlx](github.com/jmoiron/sqlx)
 
 # Feedback&Issue
 
