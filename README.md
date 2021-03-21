@@ -14,11 +14,11 @@ An project generator aimed to D.R.Y while creating new project based on DDD. vis
   - [x] PostgreSQL
   - [x] Sqlite3
 - [ ] Generate repository layer
-  - [ ] Interface
-  - [ ] Implement CRUD
-  - [ ] DAO / ORM
+  - [x] Interface
+  - [x] Implement CRUD
+  - [-] DAO / ORM
     - [x] sqlx
-    - [ ] ~~gorm~~
+    - [x] ~~gorm~~
     - [ ] ~~xorm~~
 - [ ] Generate service layer
 - [ ] Generate deliver layer
@@ -53,6 +53,7 @@ Thanks for this projects to build
 - [jsoniter](https://github.com/json-iterator/go)
 - [squirrel](github.com/Masterminds/squirrel)
 - [sqlx](github.com/jmoiron/sqlx)
+- [queryset](github.com/jirfag/go-queryset)
 
 # Feedback&Issue
 

@@ -1,397 +1,587 @@
 package utils
 
 import (
-  "database/sql"
-  // "errors"
-  "fmt"
-  "strings"
+	"database/sql"
+	// "errors"
+	"fmt"
+	"strings"
 
-  // strUtil "github.com/agrison/go-commons-lang/stringUtils"
-  "github.com/dave/jennifer/jen"
-  // "github.com/francoispqt/gojay"
-  "github.com/gertd/go-pluralize"
-  "github.com/huandu/xstrings"
-  "github.com/iancoleman/strcase"
-  "github.com/jimsmart/schema"
-  "github.com/rs/zerolog/log"
-  // "github.com/volatiletech/null"
+	"github.com/agrison/go-commons-lang/stringUtils"
+	"github.com/dave/jennifer/jen"
+	"github.com/spf13/viper"
+
+	// "github.com/francoispqt/gojay"
+	"github.com/gertd/go-pluralize"
+	"github.com/huandu/xstrings"
+	"github.com/iancoleman/strcase"
+	"github.com/jimsmart/schema"
+	"github.com/rs/zerolog/log"
+	// "github.com/volatiletech/null"
 )
 
 var plural = pluralize.NewClient()
 
 type TableMeta struct {
-  db         *sql.DB
-  Name       string
-  Prefix     string
-  OutputPath string
-  Columns    []*ColumnMeta
+	Columns       []*ColumnMeta
+	db            *sql.DB
+	Name          string
+	Prefix        string
+	PrimaryColumn *ColumnMeta
+	OutputPath    string
 }
 
-func (this *TableMeta) BuildName(name string) *TableMeta {
-  this.Name = name
-  return this
+func (self *TableMeta) BuildName(name string) *TableMeta {
+	self.Name = name
+	return self
 }
 
-func (this *TableMeta) BuildPrefix(prefix string) *TableMeta {
-  this.Prefix = prefix
-  return this
+func (self *TableMeta) BuildPrefix(prefix string) *TableMeta {
+	self.Prefix = prefix
+	return self
 }
 
-func (this *TableMeta) GetNameWithoutPrefix() string {
-  log.Trace().Str("prefix", this.Prefix).Msg("")
-  return strings.TrimPrefix(this.Name, this.Prefix)
+func (self *TableMeta) GetNameWithoutPrefix() string {
+	log.Trace().Str("prefix", self.Prefix).Msg("")
+	if stringUtils.IsBlank(self.Name) {
+		log.Error().Msg("Table name is empty")
+		return ""
+	}
+	return strings.TrimPrefix(self.Name, self.Prefix)
 }
 
-func (this *TableMeta) GetModelName() string {
-  camelCase := xstrings.ToCamelCase(this.GetNameWithoutPrefix())
-  return plural.Singular(camelCase)
+func (self *TableMeta) GetModelName() string {
+	camelCase := xstrings.ToCamelCase(self.GetNameWithoutPrefix())
+	return plural.Singular(camelCase)
 }
 
-func (this *TableMeta) GetGoFileName() string {
-  snakeCase := xstrings.ToSnakeCase(this.GetNameWithoutPrefix())
-  return plural.Singular(snakeCase)
+func (self *TableMeta) GetModelNameAsVariable() string {
+	return strcase.ToLowerCamel(self.GetModelName())
 }
 
-func (this *TableMeta) GetModuleName() string {
-  return strcase.ToKebab(this.GetNameWithoutPrefix())
+func (self *TableMeta) GetGoFileName() string {
+	snakeCase := xstrings.ToSnakeCase(self.GetNameWithoutPrefix())
+	return plural.Singular(snakeCase)
 }
 
-func (this *TableMeta) GetModulePath(base string) string {
-  return fmt.Sprintf("%s/module/%s", base, this.GetModuleName())
+func (self *TableMeta) GetModuleName() string {
+	return strcase.ToKebab(self.GetNameWithoutPrefix())
 }
 
-func (this *TableMeta) GetFileName(modulePath string, genre string) string {
-  return fmt.Sprintf("%s/%s_%s.go", modulePath, this.GetGoFileName(), genre)
+func (self *TableMeta) GetModulePath(base string) string {
+	return fmt.Sprintf("%s/%s", base, self.GetModuleName())
 }
 
-func (this *TableMeta) GetAllColumnMeta() ([]*ColumnMeta, error) {
-  cols, err := schema.Table(this.db, this.Name)
-  if err != nil {
-    return nil, err
-  }
-
-  ret := []*ColumnMeta{}
-  mapping, err := NewMappingFromJSON("./templates/mapping.json")
-  // if errors.Is(err, gojay.InvalidUnmarshalError) {
-  // if err == gojay.InvalidUnmarshalError {
-  //   log.Error().Msg("InvalidUnmarshalError")
-  // }
-  if err != nil {
-    return nil, err
-  }
-  log.Trace().Interface("mapping", mapping).Msg("")
-
-  for _, col := range cols {
-    meta := &ColumnMeta{Column: col}
-    meta.ParseAllTypes(mapping.Mappings)
-    ret = append(ret, meta)
-  }
-  return ret, nil
+func (self *TableMeta) GetFileName(modulePath string, genre string) string {
+	return fmt.Sprintf("%s/%s_%s.go", modulePath, self.GetGoFileName(), genre)
 }
 
-func (this *TableMeta) BuildModel() *jen.File {
-  // f := jen.NewFile(GetModelPackageName(this.OutputPath) + "/" + this.GetNameWithoutPrefix())
-  f := jen.NewFile(this.GetNameWithoutPrefix())
-  // this.Columns := this.GetAllColumnMeta()
-  columns, err := this.GetAllColumnMeta()
-  if err != nil {
-    log.Error().Err(err).Msg("")
-    log.Warn().Msg("erorr caused this table only can generate empty struc.")
-    return f
-  }
+func (self *TableMeta) GetAllColumnMeta() ([]*ColumnMeta, error) {
+	cols, err := schema.Table(self.db, self.Name)
+	if err != nil {
+		return nil, err
+	}
 
-  f.Line().Comment(fmt.Sprintf("model %s", this.GetModelName()))
-  f.Type().Id(this.GetModelName()).StructFunc(func(g *jen.Group) {
-    for _, col := range columns {
-      log.Trace().Str("col name", col.GetGoName()).Str("col sql type", col.SqlType).Msg("")
-      col.GenerateGo(g)
-    }
-  })
+	ret := []*ColumnMeta{}
+	mapping, err := NewMappingFromJSON("./templates/mapping.json")
+	// if errors.Is(err, gojay.InvalidUnmarshalError) {
+	// if err == gojay.InvalidUnmarshalError {
+	//   log.Error().Msg("InvalidUnmarshalError")
+	// }
+	if err != nil {
+		return nil, err
+	}
+	log.Trace().Interface("mapping", mapping).Msg("")
 
-  return f
+	for _, col := range cols {
+		meta := &ColumnMeta{Column: col}
+		meta.ParseAllTypes(mapping.Mappings)
+		if strings.ToLower(col.Name()) == "id" {
+			self.PrimaryColumn = meta
+		}
+		ret = append(ret, meta)
+	}
+	return ret, nil
 }
 
-func (this *TableMeta) SaveModel(modulePath string) error {
-  f := this.BuildModel()
-  return f.Save(this.GetFileName(modulePath, "model"))
+func (self *TableMeta) BuildModel() *jen.File {
+	// f := jen.NewFile(GetModelPackageName(self.OutputPath) + "/" + self.GetNameWithoutPrefix())
+	f := jen.NewFile(self.GetNameWithoutPrefix())
+	// f.HeaderComment("")
+	f.HeaderComment("go get -u github.com/jirfag/go-queryset/cmd/goqueryset")
+	// f.HeaderComment(fmt.Sprintf("go:generate goqueryset -in %s_model.go -out %s_queryset.go", self.GetNameWithoutPrefix(), self.GetNameWithoutPrefix()))
+	f.Line().Comment(fmt.Sprintf("go:generate goqueryset -in %s_model.go -out %s_queryset.go", self.GetNameWithoutPrefix(), self.GetNameWithoutPrefix()))
+	// self.Columns := self.GetAllColumnMeta()
+	columns, err := self.GetAllColumnMeta()
+	if err != nil {
+		log.Error().Err(err).Msg("")
+		log.Warn().Msg("erorr caused this table only can generate empty struc.")
+		return f
+	}
+
+	f.Line().Comment(fmt.Sprintf("model %s", self.GetModelName()))
+	f.Type().Id(self.GetModelName()).StructFunc(func(g *jen.Group) {
+		for _, col := range columns {
+			log.Trace().Str("col name", col.GetGoName()).Str("col sql type", col.SqlType).Msg("")
+			col.GenerateGo(g)
+		}
+	})
+	f.Line().Comment("TableName function returns actual name of table")
+	f.Func().
+		Params(jen.Id("self").Id(self.GetModelName())).
+		Id("TableName").
+		Params().
+		Params(jen.String()).
+		Block(
+			jen.Return(jen.Lit(self.Name)),
+		)
+
+	return f
 }
 
-func (this *TableMeta) BuildRepo() *jen.File {
-  // f := jen.NewFile(GetModelPackageName(this.OutputPath) + "/" + this.GetNameWithoutPrefix())
-  f := jen.NewFile(this.GetNameWithoutPrefix())
-  f.ImportAlias("github.com/Masterminds/squirrel", "sql")
-  f.ImportAlias("github.com/agrison/go-commons-lang/stringUtils", "stringUtils")
-
-  // type Option
-  f.Line().Comment("option")
-  f.Type().Id("Option").Struct(
-    jen.Id("Where").String(),
-    jen.Id("SoftDelete").Bool(),
-    jen.Id("Limit").Uint64(),
-    jen.Id("Offset").Uint64(),
-    jen.Id("OrderBy").String(),
-  )
-  // type OptionFunc
-  f.Type().Id("OptionFunc").Func().
-    Params(
-      jen.Id("opts").Op("*").Id("Option"),
-    )
-
-  // var defaultOption
-  f.Var().Id("defaultOption").Op("=").Id("Option").Values(jen.Dict{
-    jen.Id("Where"):      jen.Lit("1=1"),
-    jen.Id("SoftDelete"): jen.Lit(false),
-    jen.Id("Limit"):      jen.Lit(10),
-    jen.Id("Offset"):     jen.Lit(0),
-    jen.Id("OrderBy"):    jen.Lit(""),
-  })
-
-  // func WithLimit
-  f.Func().Id("WithLimit").
-    Params(jen.Id("limit").Uint64()).
-    Params(jen.Id("OptionFunc")).
-    Block(
-      jen.Return(
-        jen.Func().Params(jen.Id("opts").Op("*").Id("Option")).Block(
-          jen.Id("opts").Dot("Limit").Op("=").Id("limit"),
-        ),
-      ),
-    )
-
-  // func WithOffset
-  f.Func().Id("WithOffset").
-    Params(jen.Id("offset").Uint64()).
-    Params(jen.Id("OptionFunc")).
-    Block(
-      jen.Return(
-        jen.Func().Params(jen.Id("opts").Op("*").Id("Option")).Block(
-          jen.Id("opts").Dot("Offset").Op("=").Id("offset"),
-        ),
-      ),
-    )
-
-  // func WithOrderBy
-  f.Func().Id("WithOrderBy").
-    Params(jen.Id("orderBy").String()).
-    Params(jen.Id("OptionFunc")).
-    Block(
-      jen.Return(
-        jen.Func().Params(jen.Id("opts").Op("*").Id("Option")).Block(
-          jen.Id("opts").Dot("OrderBy").Op("=").Id("orderBy"),
-        ),
-      ),
-    )
-
-  // func WithOrder
-  /*f.Func().Id("WithOrder").
-    Params(jen.Id("order").String()).
-    Params(jen.Id("OptionFunc")).
-    Block(
-      jen.Return(
-        jen.Func().Params(jen.Id("opts").Op("*").Id("Option")).Block(
-          jen.Id("opts").Dot("Order").Op("=").Id("order"),
-        ),
-      ),
-    )*/
-
-  // func WithWhere
-  f.Func().Id("WithWhere").
-    Params(
-      jen.List(
-        jen.Id("format").String(),
-        jen.Id("a").Op("...").Interface(),
-      ),
-    ).
-    Params(jen.Id("OptionFunc")).
-    Block(
-      jen.Return(
-        jen.Func().Params(jen.Id("opts").Op("*").Id("Option")).Block(
-          jen.Id("opts").Dot("Where").Op("=").Qual("fmt", "Sprintf").Params(
-            jen.List(
-              jen.Lit("%s AND 1=1"),
-              jen.Qual("fmt", "Sprintf").Params(jen.List(jen.Id("format"), jen.Id("a").Op("..."))),
-            ),
-          ),
-        ),
-      ),
-    )
-
-  // interface IxxxRepostiry
-  f.Line().Comment(fmt.Sprintf("%s respostiory interface", this.GetModelName()))
-  f.Type().Id(fmt.Sprintf("I%sRepository", this.GetModelName())).Interface(
-    jen.Id("GetAll").
-      Params(
-        jen.Id("opts").Op("...").Id("OptionFunc"),
-      ).
-      Params(
-        jen.Index().Op("*").Id(this.GetModelName()),
-        jen.Error(),
-      ),
-    jen.Id("GetById").
-      Params(jen.Id("id").Int32()).
-      Params(
-        jen.Op("*").Id(this.GetModelName()),
-        jen.Error(),
-      ),
-    jen.Id("Create").
-      Params(jen.Id(strcase.ToLowerCamel(this.GetModelName())).Op("*").Id(this.GetModelName())).
-      Params(jen.Error()),
-    jen.Id("Update").
-      Params(
-        jen.Id("id").Int32(),
-        // jen.Id(strcase.ToLowerCamel(this.GetModelName()))).Op("*").Id(this.GetModelName()).
-        jen.Id(strcase.ToLowerCamel(this.GetModelName())).Op("*").Id(this.GetModelName())).
-      Params(jen.Error()),
-    jen.Id("Delete").
-      Params(jen.Id("id").Int32()).
-      Params(jen.Error()),
-  )
-
-  repositoryName := fmt.Sprintf("%sRepository", this.GetModelName())
-  // repository xxxRepository
-  f.Line().Comment(fmt.Sprintf("%s repository", this.GetModelName()))
-  f.Type().Id(repositoryName).Struct(
-    jen.Id("db").Op("*").Qual("github.com/jmoiron/sqlx", "DB"),
-  )
-
-  // func NewxxxRepository
-  f.Line().Comment(fmt.Sprintf("New%sRepository", this.GetModelName()))
-  f.Func().Id(fmt.Sprintf("New%s", repositoryName)).
-    Params(jen.Id("db").Op("*").Qual("github.com/jmoiron/sqlx", "DB")).
-    Params(jen.Op("*").Id(repositoryName)).
-    Block(jen.Return(
-      jen.Op("&").
-        Id(repositoryName).
-        Values(jen.Dict{jen.Id("db"): jen.Id("db")}),
-    ))
-
-  // func GetAll
-  f.Line().Comment(fmt.Sprintf("get all %s", this.GetModelName()))
-  f.Func().
-    Params(jen.Id("this").Op("*").Id(repositoryName)).
-    Id("GetAll").
-    Params(
-      jen.Id("opts").Op("...").Id("OptionFunc"),
-    ).
-    Params(
-      jen.Index().Op("*").Id(this.GetModelName()),
-      jen.Error()).
-    Block(
-      jen.Id("options").Op(":=").Id("defaultOption"),
-      jen.For(
-        jen.List(jen.Id("_"), jen.Id("opt")).Op(":=").Range().Id("opts").Block(
-          jen.Id("opt").Params(
-            jen.Op("&").Id("options"),
-          ),
-        ),
-      ),
-      jen.Id(fmt.Sprintf("%sSlice", this.GetNameWithoutPrefix())).Op(":=").Index().Op("*").Id(this.GetModelName()).Block(),
-      /*jen.Id("sql").Op(":=").Lit(fmt.Sprintf("SELECT * FROM `%s`", this.Name)),
-        jen.Id("sql").Op("=").Qual("fmt", "Sprintf").
-          Params(jen.List(
-            jen.Lit("%s WHERE %s"),
-            jen.Id("sql"),
-            jen.Id("options").Dot("Where"),
-          )),
-        jen.Id("sql").Op("=").Qual("fmt", "Sprintf").
-          Params(jen.List(
-            jen.Lit("%s LIMIT %d OFFSET %d"),
-            jen.Id("sql"),
-            jen.Id("options").Dot("Limit"),
-            jen.Id("options").Dot("Offset"),
-          )),
-        jen.If(
-          jen.Op("!").Qual("github.com/agrison/go-commons-lang/stringUtils", "IsBlank").
-            Params(jen.Id("options").Dot("OrderBy")).
-            Block(
-              jen.Id("sql").Op("=").Qual("fmt", "Sprintf").
-                Params(jen.List(
-                  jen.Lit("%s ORDER BY %s %s"),
-                  jen.Id("sql"),
-                  jen.Id("options").Dot("OrderBy"),
-                  jen.Id("options").Dot("Order"),
-                )),
-            ),
-        ),
-        jen.Err().Op(":=").Id("this").Dot("db").Dot("Select").Call(
-          jen.Op("&").Id(fmt.Sprintf("%sSlice", this.GetNameWithoutPrefix())),
-          jen.Id("sql"),
-        ),
-        jen.If(
-          jen.Err().Op("!=").Id("nil").Block(
-            jen.Return(jen.Nil(), jen.Err()),
-          ),
-        ),*/
-      jen.Id("sb").Op(":=").
-        Qual("github.com/Masterminds/squirrel", "Select").Call(jen.Lit("*")).
-        Dot("From").Call(jen.Lit(this.Name)).
-        Dot("Where").Call(jen.Id("options").Dot("Where")),
-      jen.If(
-        jen.Op("!").Qual("github.com/agrison/go-commons-lang/stringUtils", "IsBlank").
-          Params(jen.Id("options").Dot("OrderBy")).
-          Block(jen.Id("sb").Op("=").Id("sb").Dot("OrderBy").Call(jen.Id("options").Dot("OrderBy"))),
-      ),
-      jen.Id("sb").Op("=").Id("sb").
-        Dot("Limit").Call(jen.Id("options").Dot("Limit")).
-        Dot("Offset").Call(jen.Id("options").Dot("Offset")),
-      jen.List(jen.Id("query"), jen.Id("args"), jen.Err()).Op(":=").Id("sb").Dot("ToSql").Call(),
-      jen.If(
-        jen.Err().Op("!=").Nil().Block(
-          // jen.Qual("fmt", "Println").Params(jen.Id("query")),
-          jen.Return(jen.Nil(), jen.Err()),
-        ),
-      ),
-      jen.If(
-        jen.Err().Op(":=").Id("this").Dot("db").Dot("Select").Call(
-          jen.Op("&").Id(fmt.Sprintf("%sSlice", this.GetNameWithoutPrefix())),
-          jen.Id("query"),
-          jen.Id("args").Op("..."),
-        ),
-        jen.Err().Op("!=").Nil(),
-      ).Block(jen.Return(jen.Nil(), jen.Err())),
-      jen.Return(
-        jen.Id(fmt.Sprintf("%sSlice", this.GetNameWithoutPrefix())),
-        jen.Nil()))
-
-  // func GetById
-  f.Line().Comment(fmt.Sprintf("get one %s by id", this.GetModelName()))
-  f.Func().
-    Params(jen.Id("this").Op("*").Id(repositoryName)).
-    Id("GetById").
-    Params(jen.Id("id").Int()).
-    Params(jen.List(
-      jen.Op("*").Id(this.GetModelName()),
-      jen.Error(),
-    )).
-    Block(
-      jen.Id(this.GetNameWithoutPrefix()).Op(":=").Op("&").Id(this.GetModelName()).Block(),
-      // TODO: add deleted_at / deleted in where clause
-      jen.Id("sb").Op(":=").
-        Qual("github.com/Masterminds/squirrel", "Select").Call(jen.Lit("*")).
-        Dot("From").Call(jen.Lit(this.Name)).
-        Dot("Where").Call(jen.Lit("id = ?"), jen.Id("id")),
-      jen.List(jen.Id("query"), jen.Id("args"), jen.Err()).Op(":=").Id("sb").Dot("ToSql").Call(),
-      jen.If(
-        jen.Err().Op("!=").Nil().Block(
-          // jen.Qual("fmt", "Println").Params(jen.Id("query")),
-          jen.Return(jen.Nil(), jen.Err()),
-        ),
-      ),
-      jen.If(
-        jen.Err().Op(":=").Id("this").Dot("db").Dot("Get").Call(
-          jen.Id(this.GetNameWithoutPrefix()),
-          jen.Id("query"),
-          jen.Id("args").Op("..."),
-        ),
-        jen.Err().Op("!=").Nil(),
-      ).Block(jen.Return(jen.Nil(), jen.Err())),
-      jen.Return(jen.Id(this.GetNameWithoutPrefix()), jen.Nil()),
-    )
-
-  return f
+func (self *TableMeta) SaveModel(modulePath string) error {
+	f := self.BuildModel()
+	return f.Save(self.GetFileName(modulePath, "model"))
 }
 
-func (this *TableMeta) SaveRepo(modulePath string) error {
-  f := this.BuildRepo()
-  return f.Save(this.GetFileName(modulePath, "repo"))
+func (self *TableMeta) BuildRepo() *jen.File {
+	self.GetAllColumnMeta()
+	// f := jen.NewFile(GetModelPackageName(self.OutputPath) + "/" + self.GetNameWithoutPrefix())
+	f := jen.NewFile(self.GetNameWithoutPrefix())
+	f.HeaderComment("Code generated by Luba (https://github.com/leopku/luban).")
+	f.HeaderComment("DO NOT change it manually.")
+	f.HeaderComment("Otherwise your changes would be OVERWRITTED while next code generating.")
+	f.ImportAlias("github.com/Masterminds/squirrel", "sql")
+	f.ImportAlias("github.com/agrison/go-commons-lang/stringUtils", "stringUtils")
+	f.ImportAlias("github.com/lithammer/shortuuid/v3", "shortuuid")
+	f.ImportAlias("github.com/vijaykanthm28/go-ramda", "ramda")
+
+	// type Option
+	f.Line().Comment("Option options for query")
+	f.Type().Id("Option").Struct(
+		jen.Id("Where").String(),
+		jen.Id("SoftDelete").Bool(),
+		jen.Id("Limit").Uint64(),
+		jen.Id("Offset").Uint64(),
+		jen.Id("OrderBy").String(),
+	)
+	// type OptionFunc
+	f.Type().Id("OptionFunc").Func().
+		Params(
+			jen.Id("opts").Op("*").Id("Option"),
+		)
+
+	// var defaultOption
+	defaultWhere := "1 = 1"
+	if viper.GetViper().GetBool("generation.fields.deleted_at") {
+		defaultWhere = "`deleted_at` = '1971-01-01 00:00:00'"
+	}
+	f.Var().Id("defaultOption").Op("=").Id("Option").Values(jen.Dict{
+		jen.Id("Where"):      jen.Lit(defaultWhere),
+		jen.Id("SoftDelete"): jen.Lit(false),
+		jen.Id("Limit"):      jen.Lit(10),
+		jen.Id("Offset"):     jen.Lit(0),
+		jen.Id("OrderBy"):    jen.Lit(""),
+	})
+
+	f.Var().Id("defaultExclude").Op("=").Index().String().Values(
+		jen.Lit("created_at"),
+		jen.Lit("updated_at"),
+		jen.Lit("deleted_at"),
+		jen.Lit("version"),
+	)
+
+	// func WithLimit
+	f.Line().Comment("WithLimit parameter limit for query")
+	f.Func().Id("WithLimit").
+		Params(jen.Id("limit").Uint64()).
+		Params(jen.Id("OptionFunc")).
+		Block(
+			jen.Return(
+				jen.Func().Params(jen.Id("opts").Op("*").Id("Option")).Block(
+					jen.Id("opts").Dot("Limit").Op("=").Id("limit"),
+				),
+			),
+		)
+
+	// func WithOffset
+	f.Line().Comment("WithOffset parameter offset for query")
+	f.Func().Id("WithOffset").
+		Params(jen.Id("offset").Uint64()).
+		Params(jen.Id("OptionFunc")).
+		Block(
+			jen.Return(
+				jen.Func().Params(jen.Id("opts").Op("*").Id("Option")).Block(
+					jen.Id("opts").Dot("Offset").Op("=").Id("offset"),
+				),
+			),
+		)
+
+	// func WithOrderBy
+	f.Line().Comment("WithOrderBy parameter order by for query")
+	f.Func().Id("WithOrderBy").
+		Params(jen.Id("orderBy").String()).
+		Params(jen.Id("OptionFunc")).
+		Block(
+			jen.Return(
+				jen.Func().Params(jen.Id("opts").Op("*").Id("Option")).Block(
+					jen.Id("opts").Dot("OrderBy").Op("=").Id("orderBy"),
+				),
+			),
+		)
+
+	// func WithWhere
+	f.Line().Comment("WithWhere parameter where for query")
+	f.Func().Id("WithWhere").
+		Params(
+			jen.List(
+				jen.Id("format").String(),
+				jen.Id("a").Op("...").Interface(),
+			),
+		).
+		Params(jen.Id("OptionFunc")).
+		Block(
+			jen.Return(
+				jen.Func().Params(jen.Id("opts").Op("*").Id("Option")).Block(
+					jen.Id("opts").Dot("Where").Op("=").Qual("fmt", "Sprintf").Params(
+						jen.List(
+							// jen.Lit("%s AND `deleted_at` = '1971-01-01 00:00:00'"),
+							jen.Lit(fmt.Sprintf("%%s AND %s", defaultWhere)),
+							jen.Qual("fmt", "Sprintf").Params(jen.List(jen.Id("format"), jen.Id("a").Op("..."))),
+						),
+					),
+				),
+			),
+		)
+
+	repositoryName := fmt.Sprintf("%sRepository", self.GetModelName())
+	sliceName := fmt.Sprintf("%sSlice", self.GetModelNameAsVariable())
+
+	// interface IxxxRepostiry
+	f.Line().Comment(fmt.Sprintf("I%s repository interface", repositoryName))
+	f.Type().Id(fmt.Sprintf("I%s", repositoryName)).InterfaceFunc(func(g *jen.Group) {
+		g.Id("GetMulti").
+			Params(
+				jen.Id("opts").Op("...").Id("OptionFunc"),
+			).
+			Params(
+				jen.Index().Op("*").Id(self.GetModelName()),
+				jen.Error(),
+			)
+		g.Id("GetOne").
+			Params(
+				jen.Id("opts").Op("...").Id("OptionFunc"),
+			).
+			Params(
+				jen.Op("*").Id(self.GetModelName()),
+				jen.Error(),
+			)
+
+		g.Id("Create").
+			Params(jen.Id(strcase.ToLowerCamel(self.GetModelName())).Op("*").Id(self.GetModelName())).
+			Params(jen.Error())
+
+		g.Id("Update").
+			Params(
+				// jen.Id("id").Id(self.PrimaryColumn.GoType),
+				jen.Id(strcase.ToLowerCamel(self.GetModelName())).Op("*").Id(self.GetModelName())).
+			Params(jen.Error())
+
+		if self.PrimaryColumn != nil {
+
+			g.Id("GetById").
+				Params(jen.Id("id").Id(self.PrimaryColumn.GoType)).
+				Params(
+					jen.Op("*").Id(self.GetModelName()),
+					jen.Error(),
+				)
+			g.Id("Delete").
+				Params(jen.Id("id").Id(self.PrimaryColumn.GoType)).
+				Params(jen.Error())
+
+		}
+	})
+
+	// repository xxxRepository
+	f.Line().Comment(fmt.Sprintf("%s repository", repositoryName))
+	f.Type().Id(repositoryName).Struct(
+		jen.Id("db").Op("*").Qual("github.com/jmoiron/sqlx", "DB"),
+	)
+
+	// func NewxxxRepository
+	f.Line().Comment(fmt.Sprintf("New%s", repositoryName))
+	f.Func().Id(fmt.Sprintf("New%s", repositoryName)).
+		Params(jen.Id("db").Op("*").Qual("github.com/jmoiron/sqlx", "DB")).
+		Params(jen.Op("*").Id(repositoryName)).
+		Block(jen.Return(
+			jen.Op("&").
+				Id(repositoryName).
+				Values(jen.Dict{jen.Id("db"): jen.Id("db")}),
+		))
+
+	// func GetMulti
+	f.Line().Comment(fmt.Sprintf("GetMulti get multi %s", self.GetModelName()))
+	f.Func().
+		Params(jen.Id("self").Op("*").Id(repositoryName)).
+		Id("GetMulti").
+		Params(
+			jen.Id("opts").Op("...").Id("OptionFunc"),
+		).
+		Params(
+			jen.Index().Op("*").Id(self.GetModelName()),
+			jen.Error()).
+		Block(
+			jen.Id("options").Op(":=").Id("defaultOption"),
+			jen.For(
+				jen.List(jen.Id("_"), jen.Id("opt")).Op(":=").Range().Id("opts").Block(
+					jen.Id("opt").Params(
+						jen.Op("&").Id("options"),
+					),
+				),
+			),
+			jen.Id(sliceName).Op(":=").Index().Op("*").Id(self.GetModelName()).Block(),
+			jen.Id("sb").Op(":=").
+				Qual("github.com/Masterminds/squirrel", "Select").Call(jen.Lit("*")).
+				Dot("From").Call(jen.Lit(self.Name)).
+				Dot("Where").Call(jen.Id("options").Dot("Where")),
+			jen.If(
+				jen.Op("!").Qual("github.com/agrison/go-commons-lang/stringUtils", "IsBlank").
+					Params(jen.Id("options").Dot("OrderBy")).
+					Block(jen.Id("sb").Op("=").Id("sb").Dot("OrderBy").Call(jen.Id("options").Dot("OrderBy"))),
+			),
+			jen.Id("sb").Op("=").Id("sb").
+				Dot("Limit").Call(jen.Id("options").Dot("Limit")).
+				Dot("Offset").Call(jen.Id("options").Dot("Offset")),
+			jen.List(jen.Id("query"), jen.Id("args"), jen.Err()).Op(":=").Id("sb").Dot("ToSql").Call(),
+			jen.If(
+				jen.Err().Op("!=").Nil().Block(
+					// jen.Qual("fmt", "Println").Params(jen.Id("query")),
+					jen.Return(jen.Nil(), jen.Err()),
+				),
+			),
+			/* jen.If(
+							jen.Err().Op(":=").Id("self").Dot("db").Dot("Select").Call(
+								jen.Op("&").Id(fmt.Sprintf("%sSlice", self.GetNameWithoutPrefix())),
+								jen.Id("query"),
+								jen.Id("args").Op("..."),
+							),
+							jen.Err().Op("!=").Nil(),
+			      ).Block(jen.Return(jen.Nil(), jen.Err())), */
+			jen.If(
+				jen.Qual("github.com/vijaykanthm28/go-ramda", "IsEmpty").
+					Params(jen.Id("args")).
+					Block(
+						jen.Err().Op("=").Id("self").Dot("db").Dot("Select").Call(
+							jen.Op("&").Id(sliceName),
+							jen.Id("query"),
+						),
+					).
+					Else().
+					Block(
+						jen.Err().Op("=").Id("self").Dot("db").Dot("Select").Call(
+							jen.Op("&").Id(sliceName),
+							jen.Id("query"),
+							jen.Id("args"),
+						),
+					),
+			),
+			jen.If(
+				jen.Err().Op("!=").Nil().Block(
+					jen.Return(jen.Nil(), jen.Err()),
+				),
+			),
+			jen.Return(
+				jen.Id(sliceName),
+				jen.Nil()))
+
+		// func GetOne
+	f.Line().Comment(fmt.Sprintf("GetOne get one %s", self.GetModelName()))
+	f.Func().
+		Params(jen.Id("self").Op("*").Id(repositoryName)).
+		Id("GetOne").
+		Params(jen.Id("opts").Op("...").Id("OptionFunc")).
+		Params(jen.List(
+			jen.Op("*").Id(self.GetModelName()),
+			jen.Error(),
+		)).
+		Block(
+			jen.Id("options").Op(":=").Id("defaultOption"),
+			jen.For(
+				jen.List(
+					jen.Id("_"),
+					jen.Id("opt")).
+					Op(":=").
+					Range().
+					Id("opts").
+					Block(
+						jen.Id("opt").Params(jen.Op("&").Id("options")),
+					),
+			),
+			jen.Line(),
+			jen.Id(self.GetModelNameAsVariable()).Op(":=").Id(self.GetModelName()).Block(),
+			jen.Id("sb").Op(":=").
+				Qual("github.com/Masterminds/squirrel", "Select").Call(jen.Lit("*")).
+				Dot("From").Call(jen.Lit(self.Name)).
+				Dot("Where").Call(jen.Id("options").Dot("Where")),
+			jen.List(jen.Id("query"), jen.Id("args"), jen.Err()).Op(":=").Id("sb").Dot("ToSql").Call(),
+			jen.If(jen.Err().Op("!=").Nil()).Block(jen.Return(jen.Nil(), jen.Err())),
+			jen.If(
+				jen.Qual("github.com/vijaykanthm28/go-ramda", "IsEmpty").
+					Params(jen.Id("args")).
+					Block(
+						jen.Err().Op("=").Id("self").Dot("db").Dot("Select").Call(
+							jen.Op("&").Id(self.GetModelNameAsVariable()),
+							jen.Id("query"),
+						),
+					).
+					Else().
+					Block(
+						jen.Err().Op("=").Id("self").Dot("db").Dot("Get").Call(
+							jen.Op("&").Id(self.GetModelNameAsVariable()),
+							jen.Id("query"),
+							jen.Id("args"),
+						),
+					),
+			),
+			jen.If(
+				jen.Err().Op("!=").Nil().Block(
+					jen.Return(jen.Nil(), jen.Err()),
+				),
+			),
+			jen.Return(jen.Op("&").Id(self.GetModelNameAsVariable()), jen.Nil()),
+		)
+
+		// func Create
+	f.Line().Comment(fmt.Sprintf("Create create %s", self.GetModelName()))
+	f.Func().
+		Params(jen.Id("self").Op("*").Id(repositoryName)).
+		Id("Create").
+		Params(jen.Id(self.GetModelNameAsVariable()).Op("*").Id(self.GetModelName())).
+		Params(jen.Error()).
+		Block(
+			jen.Id(self.GetModelNameAsVariable()).Dot("Id").Op("=").Qual("github.com/lithammer/shortuuid/v3", "New").Call(),
+			// jen.Id(self.GetModelNameAsVariable()).Dot("Version").Op("=").Lit(1),
+			jen.List(jen.Id("k"), jen.Id("v")).Op(":=").Id("extractFieldsAndValues").Call(jen.Id(self.GetModelNameAsVariable()), jen.Id("defaultExclude")),
+			jen.Id("sb").Op(":=").Qual("github.com/Masterminds/squirrel", "Insert").
+				Call(jen.Lit(self.Name)).
+				Dot("Columns").Call(jen.Id("k").Op("...")).
+				Dot("Values").Call(jen.Id("v").Op("...")),
+			jen.Line(),
+			jen.List(jen.Id("query"), jen.Id("args"), jen.Id("err")).Op(":=").Id("sb").Dot("ToSql").Call(),
+			jen.If(jen.Err().Op("!=").Nil().Block(jen.Return(jen.Err()))),
+			jen.If(
+				jen.List(jen.Id("_"), jen.Err()).Op(":=").Id("self").Dot("db").Dot("Exec").Call(jen.Id("query"), jen.Id("args").Op("...")),
+				jen.Err().Op("!=").Nil(),
+			).Block(jen.Return(jen.Err())),
+			jen.Return(jen.Nil()),
+		)
+
+	// func update
+	f.Line().Comment(fmt.Sprintf("Update udpate %s", self.GetModelName()))
+	f.Func().
+		Params(jen.Id("self").Op("*").Id(repositoryName)).
+		Id("Update").
+		Params(jen.Id(self.GetModelNameAsVariable()).Id(self.GetModelName())).
+		Params(jen.Error()).
+		Block(
+			jen.Id("excludes").Op(":=").Id("append").Call(jen.List(jen.Id("defaultExclude"), jen.Lit("id"))),
+			jen.List(jen.Id("key"), jen.Id("value")).Op(":=").Id("extractFieldsAndValues").Call(jen.Id(self.GetModelNameAsVariable()), jen.Id("excludes")),
+			jen.Id("sb").Op(":=").Qual("github.com/Masterminds/squirrel", "Update").Call(jen.Lit(self.Name)),
+			jen.For(
+				jen.List(jen.Id("i"), jen.Id("k")).Op(":=").Range().Id("key").Block(
+					jen.Id("sb").Op("=").Id("sb").Dot("Set").Call(jen.Id("k"), jen.Id("value").Index(jen.Id("i"))),
+				),
+			),
+			// jen.Id("sb").Op("=").Id("sb").Dot("Set").Call(jen.Lit("version"), jen.Id(self.GetModelNameAsVariable()).Dot("Version").Op("+").Lit(1)),
+			jen.Id("sb").Op("=").Id("sb").Dot("Where").Call(jen.Lit("id = ?"), jen.Id(self.GetModelNameAsVariable()).Dot("Id")),
+			jen.List(jen.Id("query"), jen.Id("args"), jen.Err()).Op(":=").Id("sb").Dot("ToSql").Call(),
+			jen.If(jen.Err().Op("!=").Nil().Block(jen.Return(jen.Err()))),
+			jen.If(
+				jen.List(jen.Id("_"), jen.Err()).Op("=").Id("self").Dot("db").Dot("Exec").Call(jen.Id("query"), jen.Id("args").Op("...")),
+				jen.Err().Op("!=").Nil(),
+			).Block(jen.Return(jen.Err())),
+			jen.Return(jen.Nil()),
+		)
+
+	if self.PrimaryColumn != nil {
+
+		// func GetById
+		f.Line().Comment(fmt.Sprintf("GetById get one %s by id", self.GetModelName()))
+		f.Func().
+			Params(jen.Id("self").Op("*").Id(repositoryName)).
+			Id("GetById").
+			Params(jen.Id("id").Id(self.PrimaryColumn.GoType)).
+			Params(jen.List(
+				jen.Op("*").Id(self.GetModelName()),
+				jen.Error(),
+			)).
+			Block(
+				jen.Return(jen.Id("self").Dot("GetOne").Call(jen.Id("WithWhere").Call(jen.Lit("id = '%s'"), jen.Id("id")))),
+			)
+
+		// func Delete
+		f.Line().Comment(fmt.Sprintf("Delete delete %s by id", self.GetModelName()))
+		f.Func().
+			Params(jen.Id("self").Op("*").Id(repositoryName)).
+			Id("Delete").
+			Params(jen.Id("id").Id(self.PrimaryColumn.GoType)).
+			Params(jen.Error()).
+			Block(
+				jen.Id("now").Op(":=").Qual("time", "Now").Call(),
+				jen.Id("sb").Op(":=").Qual("github.com/Masterminds/squirrel", "Update").Call(jen.Lit(self.Name)).
+					Dot("Set").Call(jen.Lit("deleted_at"), jen.Id("now")).
+					Dot("Where").Call(jen.Lit("id = ?"), jen.Id("id")),
+				jen.List(jen.Id("query"), jen.Id("args"), jen.Err()).Op(":=").Id("sb").Dot("ToSql").Call(),
+				jen.If(jen.Err().Op("!=").Nil().Block(jen.Return(jen.Err()))),
+				jen.Id("tx").Op(":=").Id("self").Dot("db").Dot("MustBegin").Call(),
+				jen.Id("tx").Dot("MustExec").Call(jen.Id("query"), jen.Id("args").Op("...")),
+				jen.Id("tx").Dot("Commit").Call(),
+				jen.Return(jen.Err()),
+			)
+	}
+
+	f.Func().
+		Id("extractFieldsAndValues").
+		Params(jen.List(
+			jen.Id("t").Interface(),
+			jen.Id("excludes").Index().String(),
+		)).
+		Params(jen.List(
+			jen.Index().String(),
+			jen.Index().Interface(),
+		)).
+		Block(
+			jen.Id("s").Op(":=").Qual("github.com/fatih/structs", "New").Call(jen.Id("t")),
+			jen.Var().Id("k").Index().String(),
+			jen.Var().Id("v").Index().Interface(),
+			jen.Id("maps").Op(":=").Id("s").Dot("Map").Call(),
+			jen.For(
+				jen.List(jen.Id("_"), jen.Id("field")).
+					Op(":=").Range().Id("s").Dot("Fields").Call().
+					Block(
+						jen.Id("key").Op(":=").Qual("strings", "Split").Call(
+							jen.Id("field").Dot("Tag").Call(jen.Lit("db")),
+							jen.Lit(","),
+						).
+							Index(jen.Lit(0)),
+						jen.If(
+							jen.Id("len").Call(jen.Id("key")).Op(">").Lit(0).
+								Op("&&").Id("key").Op("!=").Lit("-").
+								Op("&&").Op("!").Qual("github.com/vijaykanthm28/go-ramda", "Contains").Call(jen.Id("excludes"), jen.Id("key")).
+								Op("&&").Op("!").Qual("github.com/vijaykanthm28/go-ramda", "IsEmpty").Call(jen.Id("maps").Index(jen.Id("field").Dot("Name").Call())).
+								Block(
+									jen.Id("k").Op("=").Id("append").Call(jen.Id("k"), jen.Id("key")),
+									jen.Id("v").Op("=").Id("append").Call(jen.Id("v"), jen.Id("maps").Index(jen.Id("field").Dot("Name").Call())),
+								),
+						),
+					),
+			),
+			jen.Return(jen.List(jen.Id("k"), jen.Id("v"))),
+		)
+
+	return f
+}
+
+func (self *TableMeta) SaveRepo(modulePath string) error {
+	f := self.BuildRepo()
+	return f.Save(self.GetFileName(modulePath, "repo"))
 }
