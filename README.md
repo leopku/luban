@@ -17,7 +17,7 @@ An project generator aimed to D.R.Y while creating new project based on DDD. vis
   - [x] Interface
   - [x] Implement CRUD
     - [x] squirrel with raw sql
-    - [-] queryset with gorm(W.I.P)
+    - [x] queryset with gorm
   - [x] DAO / ORM
     - [x] sqlx
     - [x] gorm

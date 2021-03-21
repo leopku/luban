@@ -109,7 +109,7 @@ func (self *TableMeta) BuildModel() *jen.File {
 	// f.HeaderComment("")
 	f.HeaderComment("go get -u github.com/jirfag/go-queryset/cmd/goqueryset")
 	// f.HeaderComment(fmt.Sprintf("go:generate goqueryset -in %s_model.go -out %s_queryset.go", self.GetNameWithoutPrefix(), self.GetNameWithoutPrefix()))
-	f.Line().Comment(fmt.Sprintf("go:generate goqueryset -in %s_model.go -out %s_queryset.go", self.GetNameWithoutPrefix(), self.GetNameWithoutPrefix()))
+	f.Line().Comment(fmt.Sprintf("//go:generate goqueryset -in %s_model.go -out %s_queryset.go", self.GetGoFileName(), self.GetGoFileName()))
 	// self.Columns := self.GetAllColumnMeta()
 	columns, err := self.GetAllColumnMeta()
 	if err != nil {
@@ -119,6 +119,7 @@ func (self *TableMeta) BuildModel() *jen.File {
 	}
 
 	f.Line().Comment(fmt.Sprintf("model %s", self.GetModelName()))
+	f.Line().Comment("gen:qs")
 	f.Type().Id(self.GetModelName()).StructFunc(func(g *jen.Group) {
 		for _, col := range columns {
 			log.Trace().Str("col name", col.GetGoName()).Str("col sql type", col.SqlType).Msg("")

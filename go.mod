@@ -22,6 +22,7 @@ require (
 	github.com/huandu/xstrings v1.3.2
 	github.com/iancoleman/strcase v0.1.3
 	github.com/jimsmart/schema v0.0.6
+	github.com/jinzhu/gorm v1.9.16
 	github.com/jmoiron/sqlx v1.2.0
 	github.com/json-iterator/go v1.1.8
 	github.com/lithammer/shortuuid/v3 v3.0.5
